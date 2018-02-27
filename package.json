@@ -5,6 +5,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "mysql": "^2.13.0",
     "body-parser": "^1.17.2",
     "express": "^4.15.3"
   }
