@@ -6,7 +6,7 @@ module.exports = function () {
 
     app.use(bodyParser.json());
 
-    require('../app/routes/user.server.routes')(app);
+    require('../app/routes/users.server.routes')(app);
     require('../app/routes/auctions.server.routes')(app);
 
     return app;
