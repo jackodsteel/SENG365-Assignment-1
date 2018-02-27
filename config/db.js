@@ -1,4 +1,6 @@
-const mysql = require('mysql');
+"use strict";
+
+const mysql = require("mysql");
 
 let state = {
     pool: null
@@ -6,10 +8,10 @@ let state = {
 
 exports.connect = function (done) {
     state.pool = mysql.createPool({
-        host: 'mysql3.csse.canterbury.ac.nz',
-        user: 'jes143',
-        password: '94921224',
-        database: 'jes143'
+        host: "mysql3.csse.canterbury.ac.nz",
+        user: "jes143",
+        password: "94921224",
+        database: "jes143"
     });
     done();
 };

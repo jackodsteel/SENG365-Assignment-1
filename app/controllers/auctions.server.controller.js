@@ -1,4 +1,6 @@
-const Auction = require('../models/auctions.server.model');
+"use strict";
+
+const Auction = require("../models/auctions.server.model");
 
 exports.list = function (req, res) {
     Auction.getAll(function (result) {

@@ -1,20 +1,26 @@
-const db = require('../../config/db');
+"use strict";
+
+const db = require("../../config/db");
 
 exports.getAll = function (done) {
-    db.get_pool().query('SELECT * FROM auction', function (err, rows) {
+    db.get_pool().query("SELECT * FROM auction", function (err, rows) {
 
-        if (err) return done({"ERROR": "Error selecting"});
-
-        return done(rows);
+        if (err) {
+            done({"ERROR": "Error selecting"});
+        } else {
+            return done(rows);
+        }
     });
 };
 
 exports.getOne = function (auctionId, done) {
-    db.get_pool().query('SELECT * FROM auction WHERE auction_id = ?', auctionId, function (err, rows) {
+    db.get_pool().query("SELECT * FROM auction WHERE auction_id = ?", auctionId, function (err, rows) {
 
-        if (err) return done(err);
-
-        done(rows);
+        if (err) {
+            done(err);
+        } else {
+            done(rows);
+        }
     });
 };
 

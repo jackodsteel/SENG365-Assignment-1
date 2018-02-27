@@ -1,15 +1,17 @@
-const auctions = require('../controllers/auctions.server.controller');
+"use strict";
+
+const auctions = require("../controllers/auctions.server.controller");
 
 module.exports = function (app) {
-    app.route('/auctions')
+    app.route("/auctions")
         .get(auctions.list)
         .post(auctions.create);
 
-    app.route('/auctions/:auctionId')
+    app.route("/auctions/:auctionId")
         .get(auctions.view)
         .patch(auctions.update);
 
-    app.route('/auctions/:auctionId/bids')
+    app.route("/auctions/:auctionId/bids")
         .get(auctions.viewBid)
-        .post(auctions.makeBid)
+        .post(auctions.makeBid);
 };
