@@ -6,9 +6,24 @@ const constants = require("../../config/constants");
 
 exports.getAuthenticatedUser = function (token) {
     Auth.getIdByToken(token, function (result) {
+        console.log(result);
         return result.user_id;
     });
 };
+
+exports.getAuthenticatedUser = function (token) {
+    return new Promise((resolve, reject) => {
+        Auth.getIdByToken(token, function (result) {
+            if (typeof result !== "undefined" && "user_id" in result) {
+                console.log(result);
+                resolve(result.user_id);
+            } else {
+                reject("User not authenticated");
+            }
+        });
+    });
+};
+
 
 exports.login = function (req, res) {
     let username = req.body.username;

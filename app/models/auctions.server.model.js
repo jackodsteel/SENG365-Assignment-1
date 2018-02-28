@@ -24,8 +24,14 @@ exports.getOne = function (auctionId, done) {
     });
 };
 
-exports.insert = function () {
-    return null;
+exports.insert = function (values, done) {
+    db.get_pool().query("INSERT INTO auction (auction_title, auction_categoryid, auction_description, auction_reserveprice, auction_startingprice, auction_creationdate, auction_startingdate, auction_endingdate, auction_userid) VALUES (?)", [values], function (err, result) {
+        if (err) {
+            done(err);
+        } else {
+            done(result);
+        }
+    });
 };
 
 exports.alter = function () {
