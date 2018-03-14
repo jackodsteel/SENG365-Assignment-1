@@ -46,13 +46,7 @@ exports.create = function (req, res) {
     }
     let created = new Date().toISOString().slice(0, 19).replace("T", " ");
 
-    /* Auth, get current user */
-
-    async function getId(token) {
-        return await auth.getAuthenticatedUser(token);
-    }
-
-    getId(req.get("X-Authorization")).then((id) => {
+    auth.getAuthenticatedUser(req.get("X-Authorization")).then((id) => {
         let userData = [
             req.body.title,
             req.body.categoryId,
@@ -64,8 +58,6 @@ exports.create = function (req, res) {
             req.body.endDateTime,
             id
         ];
-        console.log(constants.DATETIME_REGEX.test(req.body.startDateTime));
-        console.log(userData);
         Auction.insert(userData, function (result) {
             console.log(result);
             if (result.insertId) {
@@ -74,19 +66,63 @@ exports.create = function (req, res) {
                 return res.status(400).send("Malformed request");
             }
         });
+    }).catch(() => {
+        return res.status(401).send("Unauthorized");
     });
 };
 
 exports.view = function (req, res) {
-    return null;
+    let auctionId = req.params.auctionId;
+    Auction.getOne(auctionId, function (result) {
+        if (result.ERROR) {
+            return res.status(404).send("Not found");
+        } else {
+            return res.json(result);
+        }
+    });
 };
 
 exports.update = function (req, res) {
-    return null;
+    let auctionId = req.params.auctionId;
+    let aucitonUserId = Auction.getUserIdByAuctionId(auctionId);
+
+    auth.getAuthenticatedUser(req.get("X-Authorization")).then((id) => {
+        if (id !== auctionUserId) {
+            return res.status(401).send("Unauthorized");
+        }
+        if (!(req.body.categoryId &&
+                req.body.title &&
+                req.body.description &&
+                req.body.startDateTime &&
+                req.body.endDateTime &&
+                req.body.reservePrice &&
+                req.body.startingBid &&
+                constants.DATETIME_REGEX.test(req.body.startDateTime) &&
+                constants.DATETIME_REGEX.test(req.body.endDateTime) &&
+                req.body.categoryId > 0 &&
+                req.body.categoryId <= constants.NUM_CATEGORIES &&
+                typeof(req.body.title) === "string" &&
+                typeof(req.body.description) === "string")) {
+        }
+
+
+
+
+
+    }).catch(() => {
+        return res.status(401).send("Unauthorized");
+    });
 };
 
-exports.viewBid = function (req, res) {
-    return null;
+exports.viewBids = function (req, res) {
+    let auctionId = req.params.auctionId;
+    Auction.getBids(auctionId, function (result) {
+        if (result.ERROR) {
+            return res.status(404).send("Not found");
+        } else {
+            return res.json(result);
+        }
+    });
 };
 exports.makeBid = function (req, res) {
     return null;

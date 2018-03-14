@@ -44,10 +44,10 @@ exports.getPassword = function (username, email, done) {
 
 exports.getIdByToken = function (token, done) {
     db.get_pool().query("SELECT user_id FROM auction_user WHERE user_token = ?", token, function (err, rows) {
-        if (err) {
-            done({"ERROR": "Error selecting"});
+        if (rows[0].user_id !== "undefined") {
+            done(rows[0].user_id);
         } else {
-            done(rows[0]);
+            done({"ERROR": "Error selecting"});
         }
     });
 };

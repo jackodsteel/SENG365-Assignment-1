@@ -12,7 +12,7 @@ exports.create = function (req, res) {
             req.body.email &&
             req.body.password &&
             validator.isEmail(req.body.email + ""))) {
-        return res.status(400).send("Malformed auction data");
+        return res.status(400).send("Malformed request");
     }
     let userData = [
         req.body.username,
@@ -30,13 +30,6 @@ exports.create = function (req, res) {
             return res.status(400).send("Malformed request");
         }
     });
-};
-
-exports.login = function (req, res) {
-    return null;
-};
-exports.logout = function (req, res) {
-    return null;
 };
 
 exports.read = function (req, res) {

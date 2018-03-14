@@ -4,14 +4,7 @@ const crypto = require("crypto");
 const Auth = require("../models/authentication.server.model");
 const constants = require("../../config/constants");
 
-exports.getAuthenticatedUser = function (token) {
-    Auth.getIdByToken(token, function (result) {
-        console.log(result);
-        return result.user_id;
-    });
-};
-
-exports.getAuthenticatedUser = function (token) {
+exports.getAuthenticatedUser = async function (token) {
     return new Promise((resolve, reject) => {
         Auth.getIdByToken(token, function (result) {
             if (typeof result !== "undefined" && "user_id" in result) {

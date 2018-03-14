@@ -11,7 +11,8 @@ db.connect(function (err) {
         process.exit(1);
     } else {
         app.listen(4941, function () {
-            console.log("Example app listening on container port: 4941");
+            console.log("Example server listening on container port: 4941");
         });
+        module.exports = app;
     }
 });

@@ -12,6 +12,6 @@ module.exports = function (app) {
         .patch(auctions.update);
 
     app.route("/auctions/:auctionId/bids")
-        .get(auctions.viewBid)
+        .get(auctions.viewBids)
         .post(auctions.makeBid);
 };
