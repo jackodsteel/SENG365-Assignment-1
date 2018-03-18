@@ -4,9 +4,11 @@ const db = require("../../config/db");
 
 
 
-exports.getAll = function (done) {
-    db.get_pool().query("SELECT * FROM auction_view", function (err, rows) {
-
+exports.getAll = function (searchString, done) {
+    let sql = "SELECT id, categoryTitle, categoryId, title, reservePrice, startDateTime, endDateTime, currentBid FROM multi_auction_view";
+    sql += searchString;
+    console.log(sql);
+    db.get_pool().query(sql, function (err, rows) {
         if (err) {
             done({"ERROR": "Error selecting"});
         } else {
@@ -18,17 +20,7 @@ exports.getAll = function (done) {
 exports.getOne = function (auctionId, done) {
 
     let baseInfo = new Promise (function (resolve, reject) {
-        db.get_pool().query("SELECT categoryId, categoryTitle, title, reservePrice, startDateTime, endDateTime, creationDateTime, description, currentBid FROM single_auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-
-    let photoInfo = new Promise (function (resolve, reject) {
-        db.get_pool().query("SELECT photo_image_URI FROM photo WHERE photo_auctionid = ?", auctionId, function (err, rows) {
+        db.get_pool().query("SELECT categoryId, categoryTitle, title, reservePrice, startDateTime as startDateTime, endDateTime, creationDateTime, description, currentBid FROM single_auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
             if (err) {
                 reject(err);
             } else {
@@ -57,15 +49,13 @@ exports.getOne = function (auctionId, done) {
         });
     });
 
-    Promise.all([baseInfo, photoInfo, sellerInfo, bidInfo]).then(function (values) {
+    Promise.all([baseInfo, sellerInfo, bidInfo]).then(function (values) {
         //Format the JSON
         let jsonObj = values[0][0];
-        jsonObj["photoUris"] = values[1];
-        jsonObj["seller"] = values[2][0];
-        jsonObj["bids"] = values[3];
+        jsonObj["seller"] = values[1][0];
+        jsonObj["bids"] = values[2];
         done(jsonObj);
     }).catch(function (values) {
-        console.log(values);
         done({"ERROR" : values});
     });
 };
@@ -73,7 +63,7 @@ exports.getOne = function (auctionId, done) {
 exports.insert = function (values, done) {
     db.get_pool().query("INSERT INTO auction (auction_title, auction_categoryid, auction_description, auction_reserveprice, auction_startingprice, auction_creationdate, auction_startingdate, auction_endingdate, auction_userid) VALUES (?)", [values], function (err, result) {
         if (err) {
-            done(err);
+            done({"ERROR" : err});
         } else {
             done(result);
         }
@@ -83,25 +73,35 @@ exports.insert = function (values, done) {
 exports.getBids = function (auctionId, done) {
     db.get_pool().query("SELECT amount, datetime, buyerId, buyerUsername FROM single_auction_bids_view WHERE auctionId = ?", auctionId, function (err, rows) {
         if (err) {
-            done({"ERROR" : err});
+            return done({"ERROR" : err});
+        } else if (rows["length"] === 0) {
+            db.get_pool().query("SELECT 1 FROM auction WHERE auction_id = ? ORDER BY auction_id LIMIT 1", auctionId, function (newerr, newrows) {
+                if (newerr || !newrows["length"] > 0) {
+                    done({"ERROR" : "404"});
+                } else {
+                    return done(rows);
+                }
+            })
         } else {
+            return done(rows);
+        }
+    });
+};
+
+exports.getCurrentBidAndSeller = function (auctionId, done) {
+    db.get_pool().query("SELECT currentBid, sellerId FROM single_auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
+        if (rows && rows["length"] === 1) {
             done(rows[0]);
-        }
-    });
-};
-
-exports.getUserIdByAuctionId = function (auctionId, done) {
-    db.get_pool().query("SELECT auction_userid FROM auction WHERE auctionId = ?", auctionId, function (err, rows) {
-        if (err) {
+        } else if (err) {
             done({"ERROR" : err});
         } else {
-            done(rows);
+            done({"ERROR" : "404"});
         }
     });
 };
 
-exports.alter = function (column, value, auctionId, done) {
-    db.get_pool().query("UPDATE auction SET ?=? WHERE auctionId = ?", column, value, auctionId, function (err, rows) {
+exports.alter = function (sql, done) {
+    db.get_pool().query(sql, function (err, rows) {
         if (err) {
             done({"ERROR" : err});
         } else {
@@ -112,4 +112,24 @@ exports.alter = function (column, value, auctionId, done) {
 
 exports.remove = function () {
     return null;
+};
+
+exports.addBid = function (values, done) {
+    db.get_pool().query("INSERT INTO bid (bid_userid, bid_auctionid, bid_amount, bid_datetime) VALUES (?)", [values], function (err, result) {
+        if (err) {
+            done(err);
+        } else {
+            done(result);
+        }
+    });
+};
+
+exports.getMaxBid = function (auctionId, done) {
+    db.get_pool().query("SELECT currentBid FROM multi_auction_view WHERE id = ?", auctionId, function (err, result) {
+        if (err || result["length"] !== 1) {
+            done({"ERROR" : err});
+        } else {
+            done(result[0]);
+        }
+    });
 };

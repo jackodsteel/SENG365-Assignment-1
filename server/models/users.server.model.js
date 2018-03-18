@@ -14,12 +14,11 @@ exports.getAll = function (done) {
 };
 
 exports.getOne = function (userId, done) {
-    db.get_pool().query("SELECT * FROM auction_user WHERE user_id = ?", userId, function (err, rows) {
-
-        if (err) {
-            done(err);
+    db.get_pool().query("SELECT user_username AS 'username', user_givenname AS 'givenName', user_familyname AS 'familyName', user_email AS 'email', user_accountbalance AS 'accountBalance' FROM auction_user WHERE user_id = ?", userId, function (err, rows) {
+        if (rows && rows["length"] === 1) {
+            done(rows[0]);
         } else {
-            done(rows);
+            done({"ERROR": "Error selecting"});
         }
     });
 };
@@ -34,10 +33,12 @@ exports.insert = function (values, done) {
     });
 };
 
-exports.alter = function () {
-    return null;
-};
-
-exports.remove = function () {
-    return null;
+exports.alter = function (sql, done) {
+    db.get_pool().query(sql, function (err, rows) {
+        if (err) {
+            done({"ERROR" : err});
+        } else {
+            done(rows);
+        }
+    });
 };

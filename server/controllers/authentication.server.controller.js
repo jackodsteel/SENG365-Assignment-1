@@ -2,13 +2,11 @@
 
 const crypto = require("crypto");
 const Auth = require("../models/authentication.server.model");
-const constants = require("../../config/constants");
 
 exports.getAuthenticatedUser = async function (token) {
     return new Promise((resolve, reject) => {
         Auth.getIdByToken(token, function (result) {
             if (typeof result !== "undefined" && "user_id" in result) {
-                console.log(result);
                 resolve(result.user_id);
             } else {
                 reject("User not authenticated");
@@ -19,13 +17,13 @@ exports.getAuthenticatedUser = async function (token) {
 
 
 exports.login = function (req, res) {
-    let username = req.body.username;
-    let email = req.body.email;
-    let password = req.body.password;
+    let username = req.query["username"];
+    let email = req.query["email"];
+    let password = req.query["password"];
 
     Auth.getPassword(username, email, function (result) {
-        if (result.user_password === password) {
-            let token = crypto.randomBytes(constants.TOKEN_LENGTH * (3 / 4)).toString("base64");
+        if (result && result["user_password"] === password) {
+            let token = crypto.randomBytes(24).toString("base64");
             Auth.setToken(result.user_id, token, function () {
                 return res.json({"id": result.user_id, "token": token});
             });
