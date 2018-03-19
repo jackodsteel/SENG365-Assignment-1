@@ -32,11 +32,8 @@ exports.list = function (req, res) {
     }
 
     if (!isNaN(req.query["seller"])) {
-        console.log(req.query["seller"]);
         clauses.push("seller=" + req.query["seller"]);
     } else if (req.query["seller"]) {
-        console.log(req.query["seller"]);
-        console.log(req.query["seller"]);
         return res.status(400).send("Bad request.");
     }
 
@@ -70,10 +67,14 @@ exports.list = function (req, res) {
 exports.create = function (req, res) {
 
     /* Validity checks */
-    for (let item in [req.body["categoryId"], req.body["startDateTime"], req.body["endDateTime"], req.body["reservePrice"], req.body["startingBid"]]) {
-        if (isNaN(item) || item < 0) {
-            return res.status(400).send("Malformed auction data");
+    let checkFailed = false;
+    [req.body["categoryId"], req.body["startDateTime"], req.body["endDateTime"], req.body["reservePrice"], req.body["startingBid"]].forEach(function (field) {
+        if (isNaN(field) || field < 0) {
+            checkFailed = true;
         }
+    });
+    if (checkFailed) {
+        return res.status(400).send("Malformed auction data");
     }
     if (!(req.body["title"] && req.body["description"])) {
         return res.status(400).send("Malformed auction data");
@@ -96,7 +97,6 @@ exports.create = function (req, res) {
             id
         ];
         Auction.insert(userData, function (result) {
-            console.log(result);
             if (result.insertId) {
                 return res.json({"id": result.insertId});
             } else {
@@ -150,24 +150,38 @@ exports.update = function (req, res) {
             }
 
             if (req.body["description"]) {
-                clauses.push("auction_title='" + req.body["description"] + "'");
+                clauses.push("auction_description='" + req.body["description"] + "'");
             }
 
-            if (!isNaN(req.body["categoryId"])) {
+            if (!isNaN(req.body["categoryId"]) && req.body["categoryId"] > 0) {
                 clauses.push("auction_categoryid=" + req.body["categoryId"]);
-            } else if (req.query["categoryId"]) {
+            } else if (req.body["categoryId"]) {
                 return res.status(400).send("Bad request.");
             }
 
-            if (!isNaN(req.body["reservePrice"])) {
+            if (!isNaN(req.body["startDateTime"]) && req.body["startDateTime"] > 0) {
+                let startDateTime = new Date(req.body["startDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
+                clauses.push("auction_startingdate='" + startDateTime + "'");
+            } else if (req.body["startDateTime"]) {
+                return res.status(400).send("Bad request.");
+            }
+
+            if (!isNaN(req.body["endDateTime"]) && req.body["endDateTime"] > 0) {
+                let endDateTime = new Date(req.body["endDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
+                clauses.push("auction_endingdate='" + endDateTime + "'");
+            } else if (req.body["endDateTime"]) {
+                return res.status(400).send("Bad request.");
+            }
+
+            if (!isNaN(req.body["reservePrice"]) && req.body["reservePrice"] > 0) {
                 clauses.push("auction_reserveprice=" + req.body["reservePrice"]);
-            } else if (req.query["reservePrice"]) {
+            } else if (req.body["reservePrice"]) {
                 return res.status(400).send("Bad request.");
             }
 
-            if (!isNaN(req.body["startingBid"])) {
+            if (!isNaN(req.body["startingBid"]) && req.body["startingBid"]) {
                 clauses.push("auction_startingprice=" + req.body["startingBid"]);
-            } else if (req.query["categoryId"]) {
+            } else if (req.body["categoryId"]) {
                 return res.status(400).send("Bad request.");
             }
 
@@ -182,6 +196,7 @@ exports.update = function (req, res) {
 
             Auction.alter(updateString, function (result) {
                 if (result["ERROR"]) {
+                    console.log(result);
                     return res.status(500).send("Internal server error");
                 }
                 return res.status(201).send("OK");
@@ -234,7 +249,7 @@ exports.makeBid = function (req, res) {
             ];
             Auction.addBid(bidData, function (result) {
                 if (result.insertId) {
-                    return res.json({"id": result.insertId});
+                    return res.status(201).send("OK");
                 } else if (result["code"] && result["code"] === "ER_NO_REFERENCED_ROW_2") {
                     return res.status(404).send("Not found");
                 }
@@ -268,7 +283,6 @@ exports.addPhoto = function (req, res) {
         return res.status(404).send("Not found");
     }
     Auction.getCurrentBidAndSeller(auctionId, function (result) {
-        console.log(auctionId);
         if (result["ERROR"] && result["ERROR"] === "404") {
             return res.status(404).send("Not found.")
         }
@@ -278,7 +292,6 @@ exports.addPhoto = function (req, res) {
         }
 
         auth.getAuthenticatedUser(req.get("X-Authorization")).then((currentUser) => {
-            console.log(currentUser);
             if (currentUser !== result["sellerId"]) {
                 return res.status(401).send("Unauthorized");
             }
@@ -286,7 +299,6 @@ exports.addPhoto = function (req, res) {
             return res.status(201).send("OK");
 
         }).catch((err) => {
-            console.log(err);
             return res.status(401).send("Unauthorized");
         });
     });

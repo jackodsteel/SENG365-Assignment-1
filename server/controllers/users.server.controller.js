@@ -24,11 +24,9 @@ exports.create = function (req, res) {
     ];
 
     User.insert(userData, function (result) {
-        console.log(result);
         if (result.insertId) {
             return res.status(201).json({"id": result.insertId});
         } else {
-            console.log(result);
             return res.status(400).send("Malformed request");
         }
     });
@@ -81,11 +79,11 @@ exports.update = function (req, res) {
         }
 
         if (req.body["familyName"]) {
-            clauses.push("user_familyname=" + req.body["familyName"]);
+            clauses.push("user_familyname='" + req.body["familyName"] + "'");
         }
 
         if (req.body["password"]) {
-            clauses.push("user_password=" + req.body["password"]);
+            clauses.push("user_password='" + req.body["password"] + "'");
         }
 
         if (req.body["email"] && validator.isEmail(req.body["email"] + "")) {
@@ -105,7 +103,9 @@ exports.update = function (req, res) {
 
         User.alter(updateString, function (result) {
             if (result["ERROR"]) {
-                console.log(result);
+                if (result["ERROR"]["code"] && result["ERROR"]["code"] === "ER_DUP_ENTRY") {
+                    return res.status(400).send("Bad request.");
+                }
                 return res.status(500).send("Internal server error");
             }
             return res.status(201).send("OK");
