@@ -5,12 +5,12 @@ const db = require("../../config/db");
 
 
 exports.getAll = function (searchString, done) {
-    let sql = "SELECT id, categoryTitle, categoryId, title, reservePrice, startDateTime, endDateTime, currentBid FROM multi_auction_view";
+    let sql = "SELECT auctionId AS id, categoryTitle, categoryId, title, reservePrice, startDateTime, endDateTime, currentBid FROM auction_view";
     sql += searchString;
     console.log(sql);
     db.get_pool().query(sql, function (err, rows) {
         if (err) {
-            done({"ERROR": "Error selecting"});
+            done({"ERROR": err});
         } else {
             return done(rows);
         }
@@ -20,7 +20,7 @@ exports.getAll = function (searchString, done) {
 exports.getOne = function (auctionId, done) {
 
     let baseInfo = new Promise (function (resolve, reject) {
-        db.get_pool().query("SELECT categoryId, categoryTitle, title, reservePrice, startDateTime as startDateTime, endDateTime, creationDateTime, description, currentBid FROM single_auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
+        db.get_pool().query("SELECT categoryId, categoryTitle, title, reservePrice, startDateTime, endDateTime, creationDateTime, description, currentBid FROM auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
             if (err) {
                 reject(err);
             } else {
@@ -61,7 +61,7 @@ exports.getOne = function (auctionId, done) {
 };
 
 exports.insert = function (values, done) {
-    db.get_pool().query("INSERT INTO auction (auction_title, auction_categoryid, auction_description, auction_reserveprice, auction_startingprice, auction_creationdate, auction_startingdate, auction_endingdate, auction_userid) VALUES (?)", [values], function (err, result) {
+    db.get_pool().query("INSERT INTO auction (auction_title, auction_categoryid, auction_description, auction_reserveprice, auction_startingprice, auction_creationdate, auction_startingdate, auction_endingdate, auction_userid) VALUES (?, ?, ?, ?, ?, FROM_UNIXTIME(?), FROM_UNIXTIME(?), FROM_UNIXTIME(?), ?)", values, function (err, result) {
         if (err) {
             done({"ERROR" : err});
         } else {
@@ -89,7 +89,7 @@ exports.getBids = function (auctionId, done) {
 };
 
 exports.getCurrentBidAndSeller = function (auctionId, done) {
-    db.get_pool().query("SELECT currentBid, sellerId FROM single_auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
+    db.get_pool().query("SELECT currentBid, sellerId FROM auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
         if (rows && rows["length"] === 1) {
             done(rows[0]);
         } else if (err) {
@@ -125,7 +125,7 @@ exports.addBid = function (values, done) {
 };
 
 exports.getMaxBid = function (auctionId, done) {
-    db.get_pool().query("SELECT currentBid FROM multi_auction_view WHERE id = ?", auctionId, function (err, result) {
+    db.get_pool().query("SELECT currentBid FROM auction_view WHERE auctionId = ?", auctionId, function (err, result) {
         if (err || result["length"] !== 1) {
             done({"ERROR" : err});
         } else {

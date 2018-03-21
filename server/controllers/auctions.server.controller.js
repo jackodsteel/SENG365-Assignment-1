@@ -32,13 +32,13 @@ exports.list = function (req, res) {
     }
 
     if (!isNaN(req.query["seller"])) {
-        clauses.push("seller=" + req.query["seller"]);
+        clauses.push("sellerId=" + req.query["seller"]);
     } else if (req.query["seller"]) {
         return res.status(400).send("Bad request.");
     }
 
     if (!isNaN(req.query["bidder"])) {
-        clauses.push("id IN (SELECT bid_auctionid FROM bid WHERE bid_userid=" + req.query["bidder"] + ")");
+        clauses.push("auctionId IN (SELECT bid_auctionid FROM bid WHERE bid_userid=" + req.query["bidder"] + ")");
     } else if (req.query["bidder"]) {
         return res.status(400).send("Bad request.");
     }
@@ -58,6 +58,7 @@ exports.list = function (req, res) {
 
     Auction.getAll(searchString, function (result) {
         if (result["ERROR"]) {
+            console.log(result);
             return res.status(500).send("Internal server error");
         }
         return res.json(result);
@@ -80,9 +81,9 @@ exports.create = function (req, res) {
         return res.status(400).send("Malformed auction data");
     }
 
-    let created = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    let startDateTime = new Date(req.body["startDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
-    let endDateTime = new Date(req.body["endDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    let created = Math.floor(new Date() / 1000);
+    let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
+    let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
 
     auth.getAuthenticatedUser(req.get("X-Authorization")).then((id) => {
         let userData = [
@@ -110,11 +111,12 @@ exports.create = function (req, res) {
 
 exports.view = function (req, res) {
     let auctionId = req.params["auctionId"];
-    if (isNaN(auctionId)) {
+    if (isNaN(auctionId) || auctionId <= 0) {
         return res.status(400).send("Bad request.")
     }
     Auction.getOne(auctionId, function (result) {
         if (result["ERROR"]) {
+            console.log(result);
             return res.status(404).send("Not found");
         } else {
             return res.json(result);
@@ -160,15 +162,15 @@ exports.update = function (req, res) {
             }
 
             if (!isNaN(req.body["startDateTime"]) && req.body["startDateTime"] > 0) {
-                let startDateTime = new Date(req.body["startDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
-                clauses.push("auction_startingdate='" + startDateTime + "'");
+                let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
+                clauses.push("auction_startingdate=FROM_UNIXTIME(" + startDateTime + ")");
             } else if (req.body["startDateTime"]) {
                 return res.status(400).send("Bad request.");
             }
 
             if (!isNaN(req.body["endDateTime"]) && req.body["endDateTime"] > 0) {
-                let endDateTime = new Date(req.body["endDateTime"] * 1000).toISOString().slice(0, 19).replace('T', ' ');
-                clauses.push("auction_endingdate='" + endDateTime + "'");
+                let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
+                clauses.push("auction_endingdate=FROM_UNIXTIME(" + endDateTime + ")");
             } else if (req.body["endDateTime"]) {
                 return res.status(400).send("Bad request.");
             }
