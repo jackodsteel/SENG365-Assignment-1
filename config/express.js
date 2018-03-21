@@ -7,6 +7,15 @@ module.exports = function () {
     const app = express();
 
     app.use(bodyParser.json());
+    app.use(function (err, req, res, next) {
+        if (err instanceof SyntaxError &&
+            err.status >= 400 && err.status < 500 &&
+            err.message.indexOf('JSON')) {
+            res.status(400).send("Invalid JSON")
+        } else {
+            next();
+        }
+    });
     app.use("/assets", express.static("../public/assets/"));
 
     require("../server/routes/auctions.server.routes")(app);

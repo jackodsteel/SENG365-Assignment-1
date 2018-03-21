@@ -84,6 +84,11 @@ exports.create = function (req, res) {
     let created = Math.floor(new Date() / 1000);
     let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
     let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
+    if (endDateTime <= startDateTime) {
+        console.log(endDateTime);
+        console.log(startDateTime);
+        return res.status(400).send("Malformed auction data");
+    }
 
     auth.getAuthenticatedUser(req.get("X-Authorization")).then((id) => {
         let userData = [
@@ -99,7 +104,7 @@ exports.create = function (req, res) {
         ];
         Auction.insert(userData, function (result) {
             if (result.insertId) {
-                return res.json({"id": result.insertId});
+                return res.status(201).json({"id": result.insertId});
             } else {
                 return res.status(400).send("Malformed request");
             }
@@ -130,16 +135,14 @@ exports.update = function (req, res) {
     if (isNaN(auctionId) || auctionId <= 0) {
         return res.status(400).send("Bad request.")
     }
-    Auction.getCurrentBidAndSeller(auctionId, function (result) {
+    Auction.getSellerAndTimes(auctionId, function (result) {
         if (result["ERROR"] && result["ERROR"] === "404") {
             return res.status(404).send("Not found.")
-        }
-        if (result["currentBid"]) {
-            return res.status(403).send("Forbidden - bidding has begun on the auction.");
-        }
-        if (result["ERROR"]) {
+        } else if (result["ERROR"]) {
             console.log(result);
             return res.status(500).send("Internal server error");
+        } else if (result["startDateTime"] <= Date.now()) {
+            return res.status(403).send("Forbidden - bidding has begun on the auction.");
         }
 
         auth.getAuthenticatedUser(req.get("X-Authorization")).then((currentUser) => {
@@ -161,18 +164,43 @@ exports.update = function (req, res) {
                 return res.status(400).send("Bad request.");
             }
 
-            if (!isNaN(req.body["startDateTime"]) && req.body["startDateTime"] > 0) {
-                let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
-                clauses.push("auction_startingdate=FROM_UNIXTIME(" + startDateTime + ")");
-            } else if (req.body["startDateTime"]) {
-                return res.status(400).send("Bad request.");
-            }
+            if (req.body["startDateTime"] && req.body["endDateTime"]) {
+                if (req.body["startDateTime"] >= req.body["endDateTime"]) {
+                    return res.status(400).send("Bad request.")
+                }
+                if (!isNaN(req.body["startDateTime"]) && req.body["startDateTime"] > 0) {
+                    let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
+                    clauses.push("auction_startingdate=FROM_UNIXTIME(" + startDateTime + ")");
+                } else if (req.body["startDateTime"]) {
+                    return res.status(400).send("Bad request.");
+                }
 
-            if (!isNaN(req.body["endDateTime"]) && req.body["endDateTime"] > 0) {
-                let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
-                clauses.push("auction_endingdate=FROM_UNIXTIME(" + endDateTime + ")");
+                if (!isNaN(req.body["endDateTime"]) && req.body["endDateTime"] > 0) {
+                    let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
+                    clauses.push("auction_endingdate=FROM_UNIXTIME(" + endDateTime + ")");
+                } else if (req.body["endDateTime"]) {
+                    return res.status(400).send("Bad request.");
+                }
+            } else if (req.body["startDateTime"]) {
+                if (req.body["startDateTime"] >= result["endDateTime"]) {
+                    return res.status(400).send("Bad request.")
+                }
+                if (!isNaN(req.body["startDateTime"]) && req.body["startDateTime"] > 0) {
+                    let startDateTime = Math.floor(req.body["startDateTime"] / 1000);
+                    clauses.push("auction_startingdate=FROM_UNIXTIME(" + startDateTime + ")");
+                } else if (req.body["startDateTime"]) {
+                    return res.status(400).send("Bad request.");
+                }
             } else if (req.body["endDateTime"]) {
-                return res.status(400).send("Bad request.");
+                if (result["startDateTime"] >= req.body["endDateTime"]) {
+                    return res.status(400).send("Bad request.")
+                }
+                if (!isNaN(req.body["endDateTime"]) && req.body["endDateTime"] > 0) {
+                    let endDateTime = Math.floor(req.body["endDateTime"] / 1000);
+                    clauses.push("auction_endingdate=FROM_UNIXTIME(" + endDateTime + ")");
+                } else if (req.body["endDateTime"]) {
+                    return res.status(400).send("Bad request.");
+                }
             }
 
             if (!isNaN(req.body["reservePrice"]) && req.body["reservePrice"] > 0) {
@@ -203,8 +231,6 @@ exports.update = function (req, res) {
                 }
                 return res.status(201).send("OK");
             });
-
-
         }).catch(() => {
             return res.status(401).send("Unauthorized");
         });
@@ -237,12 +263,19 @@ exports.makeBid = function (req, res) {
 
     let created = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-    Auction.getMaxBid(auctionId, function (result) {
+    Auction.getMaxBidAndTimesAndSeller(auctionId, function (result) {
         if (result["currentBid"] !== null && result["currentBid"] >= amount) {
+            return res.status(400).send("Bad request.")
+        } else if (Date.now() <= result["startDateTime"]) {
+            return res.status(400).send("Bad request.")
+        } else if (result["endDateTime"] <= Date.now()) {
             return res.status(400).send("Bad request.")
         }
 
         auth.getAuthenticatedUser(req.get("X-Authorization")).then((userId) => {
+            if (result["sellerId"] === userId) {
+                return res.status(400).send("Bad request.")
+            }
             let bidData = [
                 userId,
                 auctionId,
@@ -283,8 +316,10 @@ exports.addPhoto = function (req, res) {
     let auctionId = req.params["auctionId"];
     if (isNaN(auctionId) || auctionId <= 0) {
         return res.status(404).send("Not found");
+    } else if (fs.existsSync("./public/assets/images/" + auctionId)) {
+        return res.status(400).send("Bad request.")
     }
-    Auction.getCurrentBidAndSeller(auctionId, function (result) {
+    Auction.getMaxBidAndTimesAndSeller(auctionId, function (result) {
         if (result["ERROR"] && result["ERROR"] === "404") {
             return res.status(404).send("Not found.")
         }
@@ -311,7 +346,7 @@ exports.deletePhoto = function (req, res) {
     if (isNaN(auctionId) || auctionId <= 0) {
         return res.status(404).send("Not found");
     }
-    Auction.getCurrentBidAndSeller(auctionId, function (result) {
+    Auction.getMaxBidAndTimesAndSeller(auctionId, function (result) {
         if (result["ERROR"] && result["ERROR"] === "404") {
             return res.status(404).send("Not found.")
         }

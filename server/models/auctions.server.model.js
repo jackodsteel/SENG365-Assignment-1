@@ -88,8 +88,8 @@ exports.getBids = function (auctionId, done) {
     });
 };
 
-exports.getCurrentBidAndSeller = function (auctionId, done) {
-    db.get_pool().query("SELECT currentBid, sellerId FROM auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
+exports.getSellerAndTimes = function (auctionId, done) {
+    db.get_pool().query("SELECT sellerId, startDateTime, endDateTime, creationDateTime FROM auction_view WHERE auctionId = ?", auctionId, function (err, rows) {
         if (rows && rows["length"] === 1) {
             done(rows[0]);
         } else if (err) {
@@ -124,8 +124,8 @@ exports.addBid = function (values, done) {
     });
 };
 
-exports.getMaxBid = function (auctionId, done) {
-    db.get_pool().query("SELECT currentBid FROM auction_view WHERE auctionId = ?", auctionId, function (err, result) {
+exports.getMaxBidAndTimesAndSeller = function (auctionId, done) {
+    db.get_pool().query("SELECT currentBid, startDateTime, endDateTime, sellerId FROM auction_view WHERE auctionId = ?", auctionId, function (err, result) {
         if (err || result["length"] !== 1) {
             done({"ERROR" : err});
         } else {
