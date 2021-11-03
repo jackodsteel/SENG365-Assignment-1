@@ -14,7 +14,7 @@
     "express": "^4.17.1",
     "mysql": "^2.17.1",
     "node-fs": "^0.1.7",
-    "validator": "^12.0.0",
+    "validator": "^13.7.0",
     "glob": "latest"
   },
   "devDependencies": {
